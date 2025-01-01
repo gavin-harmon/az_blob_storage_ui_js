@@ -12,6 +12,12 @@ function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  // Add Azure config state
+  const [azureConfig, setAzureConfig] = useState({
+    accountName: '',
+    containerName: '',
+    sasToken: ''
+  });
 
   // Initialize dark mode
   useEffect(() => {
@@ -24,8 +30,7 @@ function App() {
     }
   }, [connected]);
 
-
-   const handleConnect = async (credentials) => {
+  const handleConnect = async (credentials) => {
     try {
       setLoading(true);
       await axios.post(`${API_BASE}/connect`, {
@@ -33,6 +38,14 @@ function App() {
         container_name: credentials.containerName,
         sas_token: credentials.sasToken
       });
+      
+      // Store Azure config for direct access
+      setAzureConfig({
+        accountName: credentials.accountName,
+        containerName: credentials.containerName,
+        sasToken: credentials.sasToken
+      });
+      
       setConnected(true);
       setError('');
     } catch (err) {
@@ -60,48 +73,6 @@ function App() {
       setLoading(false);
     }
   }, [connected]);
-
-  const handleUpload = async (files) => {
-    try {
-      setLoading(true);
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        await axios.post(`${API_BASE}/upload`, formData, {
-          params: { path: currentPath },
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      }
-      await loadFiles(currentPath);
-    } catch (err) {
-      setError(err.response?.data?.detail || err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownload = async (file) => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE}/download`, {
-        params: { path: file.path },
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.name);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err.response?.data?.detail || err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (file) => {
     if (!window.confirm(`Are you sure you want to delete ${file.name}?`)) {
@@ -133,6 +104,17 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDisconnect = () => {
+    setConnected(false);
+    setFiles([]);
+    setCurrentPath('');
+    setAzureConfig({
+      accountName: '',
+      containerName: '',
+      sasToken: ''
+    });
   };
 
   return (
@@ -167,11 +149,7 @@ function App() {
           <div className="col-span-1">
             <ConnectionPanel
               onConnect={handleConnect}
-              onDisconnect={() => {
-                setConnected(false);
-                setFiles([]);
-                setCurrentPath('');
-              }}
+              onDisconnect={handleDisconnect}
               isConnected={connected}
               isLoading={loading}
               darkMode={darkMode}
@@ -184,12 +162,11 @@ function App() {
                 files={files}
                 currentPath={currentPath}
                 onNavigate={loadFiles}
-                onUpload={handleUpload}
-                onDownload={handleDownload}
                 onDelete={handleDelete}
                 onCreateDirectory={handleCreateDirectory}
                 isLoading={loading}
                 darkMode={darkMode}
+                azureConfig={azureConfig}
               />
             ) : (
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700/50 p-8 text-center text-gray-400 shadow-lg">
