@@ -11,16 +11,10 @@ import os
 
 app = FastAPI()
 
-# Allow CORS in development and production
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "*"  # Add this for production
-    ],
+    allow_origins=["*"],  # Simplified for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,14 +99,15 @@ async def delete_file(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Catch-all route for client-side routing
+# 2. First, mount static files for assets
+app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="static_assets")
+
+# 3. The catch-all route BEFORE the root mount
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
     return FileResponse("../frontend/dist/index.html")
 
-# Mount static files AFTER all API routes
+# 4. Finally mount the root static files LAST
 app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="static")
-
-        
