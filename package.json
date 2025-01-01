@@ -3,6 +3,6 @@
     "shadcn-ui": "^0.9.4"
   },
   "scripts": {
-    "start": "cd frontend && npm run dev & cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    "start": "cd frontend && npm run dev & cd api && uvicorn main:app --host 0.0.0.0 --port $PORT"
   }
 }
