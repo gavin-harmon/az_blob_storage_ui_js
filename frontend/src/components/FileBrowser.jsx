@@ -29,24 +29,20 @@ const FileBrowser = ({
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
 
-  // Handle sorting
   const sortedFiles = useMemo(() => {
     const sortedItems = [...files];
     
     return sortedItems.sort((a, b) => {
-      // Directories first
       if (a.type !== b.type) {
         return a.type === 'directory' ? -1 : 1;
       }
       
-      // Sort by the selected key
       if (sortConfig.key === 'size') {
         return sortConfig.direction === 'asc' 
           ? (a.size || 0) - (b.size || 0)
           : (b.size || 0) - (a.size || 0);
       }
       
-      // Sort by name
       const nameA = a.name.toLowerCase();
       const nameB = b.name.toLowerCase();
       return sortConfig.direction === 'asc'
@@ -71,37 +67,35 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-  // Direct Azure upload handler
   const handleUpload = async (files) => {
     try {
-      const blobServiceClient = new BlobServiceClient(
-        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
-      );
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
       const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
       for (const file of files) {
-        const blobClient = containerClient.getBlockBlobClient(
-          currentPath ? `${currentPath}/${file.name}` : file.name
-        );
-        await blobClient.uploadData(file);
+        console.log('Uploading file:', file.name);
+        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        await blockBlobClient.uploadBrowserData(file);
       }
-      onNavigate(currentPath); // Refresh file list
+      onNavigate(currentPath);
     } catch (err) {
       console.error('Upload error:', err);
+      alert('Upload failed: ' + err.message);
     }
   };
 
-  // Direct Azure download handler
   const handleDownload = async (file) => {
     try {
-      const blobServiceClient = new BlobServiceClient(
-        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
-      );
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
       const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-      const blobClient = containerClient.getBlockBlobClient(file.path);
+      const blockBlobClient = containerClient.getBlockBlobClient(file.path);
       
-      const downloadResponse = await blobClient.download();
-      const blob = await downloadResponse.blob();
+      console.log('Starting download:', file.name);
+      const response = await blockBlobClient.download();
+      const blob = await response.blobBody;
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -113,6 +107,7 @@ const FileBrowser = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download error:', err);
+      alert('Download failed: ' + err.message);
     }
   };
 
@@ -120,7 +115,6 @@ const FileBrowser = ({
 
   return (
     <div className="bg-white dark:bg-dark-700 rounded-lg shadow-sm border border-gray-200 dark:border-dark-600">
-      {/* Breadcrumb Navigation */}
       <div className="p-4 border-b border-gray-200 dark:border-dark-600">
         <div className="flex items-center text-sm">
           <button 
@@ -143,7 +137,6 @@ const FileBrowser = ({
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex justify-end px-4 py-2 border-b border-gray-200 dark:border-dark-600">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
@@ -154,9 +147,7 @@ const FileBrowser = ({
         </button>
       </div>
 
-      {/* File List */}
       <div className="divide-y divide-gray-200 dark:divide-dark-600">
-        {/* Headers */}
         <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 dark:bg-dark-800">
           <button 
             onClick={() => requestSort('name')}
@@ -177,7 +168,6 @@ const FileBrowser = ({
           </div>
         </div>
 
-        {/* File List */}
         {isLoading ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-300">Loading...</div>
         ) : sortedFiles.length === 0 ? (
@@ -233,7 +223,6 @@ const FileBrowser = ({
         )}
       </div>
 
-      {/* Upload Area */}
       <div className="border-t border-gray-200 dark:border-dark-600 p-4">
         <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
           <input
