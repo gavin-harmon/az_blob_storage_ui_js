@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import { BlobServiceClient } from "@azure/storage-blob";
 import { 
   Folder, 
   File, 
-  Download, 
-  Trash2, 
   Upload,
+  Trash2, 
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
@@ -17,11 +17,10 @@ const FileBrowser = ({
   files = [], 
   currentPath = '',
   onNavigate,
-  onUpload,
-  onDownload,
   onDelete,
   onCreateDirectory,
-  isLoading 
+  isLoading,
+  azureConfig 
 }) => {
   const [sortConfig, setSortConfig] = useState({
     key: 'name',
@@ -34,7 +33,6 @@ const FileBrowser = ({
   const sortedFiles = useMemo(() => {
     const sortedItems = [...files];
     
-    // Always keep directories at the top
     return sortedItems.sort((a, b) => {
       // Directories first
       if (a.type !== b.type) {
@@ -60,10 +58,7 @@ const FileBrowser = ({
   const requestSort = (key) => {
     setSortConfig(current => ({
       key,
-      direction: 
-        current.key === key && current.direction === 'asc' 
-          ? 'desc' 
-          : 'asc',
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
   };
 
@@ -76,19 +71,52 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-  const pathParts = currentPath.split('/').filter(Boolean);
+  // Direct Azure upload handler
+  const handleUpload = async (files) => {
+    try {
+      const blobServiceClient = new BlobServiceClient(
+        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
+      );
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
-  const renderActionButtons = () => (
-    <div className="flex justify-end px-4 py-2 border-b border-gray-200 dark:border-dark-600">
-      <button
-        onClick={() => setIsNewFolderDialogOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/20 rounded-md"
-      >
-        <FolderPlus className="h-4 w-4" />
-        New Folder
-      </button>
-    </div>
-  );
+      for (const file of files) {
+        const blobClient = containerClient.getBlockBlobClient(
+          currentPath ? `${currentPath}/${file.name}` : file.name
+        );
+        await blobClient.uploadData(file);
+      }
+      onNavigate(currentPath); // Refresh file list
+    } catch (err) {
+      console.error('Upload error:', err);
+    }
+  };
+
+  // Direct Azure download handler
+  const handleDownload = async (file) => {
+    try {
+      const blobServiceClient = new BlobServiceClient(
+        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
+      );
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+      const blobClient = containerClient.getBlockBlobClient(file.path);
+      
+      const downloadResponse = await blobClient.download();
+      const blob = await downloadResponse.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+    }
+  };
+
+  const pathParts = currentPath.split('/').filter(Boolean);
 
   return (
     <div className="bg-white dark:bg-dark-700 rounded-lg shadow-sm border border-gray-200 dark:border-dark-600">
@@ -115,7 +143,16 @@ const FileBrowser = ({
         </div>
       </div>
 
-      {renderActionButtons()}
+      {/* Action Buttons */}
+      <div className="flex justify-end px-4 py-2 border-b border-gray-200 dark:border-dark-600">
+        <button
+          onClick={() => setIsNewFolderDialogOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/20 rounded-md"
+        >
+          <FolderPlus className="h-4 w-4" />
+          New Folder
+        </button>
+      </div>
 
       {/* File List */}
       <div className="divide-y divide-gray-200 dark:divide-dark-600">
@@ -174,11 +211,11 @@ const FileBrowser = ({
                   {item.type === 'file' && (
                     <>
                       <button
-                        onClick={() => onDownload(item)}
+                        onClick={() => handleDownload(item)}
                         className="p-1.5 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/20 rounded-md"
                         title="Download"
                       >
-                        <Download className="h-4 w-4" />
+                        Download
                       </button>
                       <button
                         onClick={() => onDelete(item)}
@@ -202,7 +239,7 @@ const FileBrowser = ({
           <input
             type="file"
             multiple
-            onChange={(e) => onUpload(Array.from(e.target.files))}
+            onChange={(e) => handleUpload(Array.from(e.target.files))}
             className="hidden"
             id="file-upload"
           />
