@@ -3,6 +3,7 @@
     "shadcn-ui": "^0.9.4"
   },
   "scripts": {
+    "build": "pip install -r requirements.txt && cd frontend && npm install",
     "start": "cd frontend && npm run dev & cd api && uvicorn main:app --host 0.0.0.0 --port $PORT"
   }
 }
