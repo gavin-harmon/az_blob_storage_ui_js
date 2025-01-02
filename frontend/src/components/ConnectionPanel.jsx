@@ -13,12 +13,12 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
 
   return (
     <div className="bg-grey rounded-lg shadow-sm p-6 border border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Azure Storage Connection</h2>
+      <h2 className="text-lg font-semibold text-white-800 mb-4">Azure Storage Connection</h2>
       
       {!isConnected ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">
+            <label className="text-sm font-medium text-white-700 block mb-1">
               Storage Account Name
             </label>
             <input
@@ -31,7 +31,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
           </div>
           
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">
+            <label className="text-sm font-medium text-white-700 block mb-1">
               Container Name
             </label>
             <input
@@ -44,7 +44,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
           </div>
           
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">
+            <label className="text-sm font-medium text-white-700 block mb-1">
               SAS Token
             </label>
             <input
