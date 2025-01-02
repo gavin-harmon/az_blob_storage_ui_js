@@ -75,31 +75,51 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-const handleUpload = async (files) => {
-  try {
-    // Fix: Ensure sasToken is attached to baseUrl correctly
-    const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-    const sasToken = azureConfig.sasToken.startsWith('?') 
-      ? azureConfig.sasToken 
-      : `?${azureConfig.sasToken}`;
-    const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
+onst [uploadProgress, setUploadProgress] = useState(null);
 
-    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+  const handleUpload = async (files) => {
+    try {
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const sasToken = azureConfig.sasToken.startsWith('?') 
+        ? azureConfig.sasToken 
+        : `?${azureConfig.sasToken}`;
+      const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
-    for (const file of files) {
-      console.log('Uploading file:', file.name);
-      const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      await blockBlobClient.uploadData(file, {
-        blobHTTPHeaders: { blobContentType: file.type || 'application/octet-stream' }
-      });
+      for (const file of files) {
+        setUploadProgress({
+          fileName: file.name,
+          progress: 0,
+          totalSize: formatSize(file.size)
+        });
+
+        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        
+        await blockBlobClient.uploadData(file, {
+          onProgress: (ev) => {
+            const progress = (ev.loadedBytes / file.size) * 100;
+            setUploadProgress(prev => ({
+              ...prev,
+              progress: progress.toFixed(1)
+            }));
+          },
+          blockSize: 4 * 1024 * 1024, // 4MB chunks
+          concurrency: 20, // Number of parallel uploads
+          blobHTTPHeaders: {
+            blobContentType: file.type || 'application/octet-stream'
+          }
+        });
+      }
+      
+      setUploadProgress(null); // Clear progress after completion
+      onNavigate(currentPath);
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + err.message);
+      setUploadProgress(null); // Clear progress on error
     }
-    onNavigate(currentPath);
-  } catch (err) {
-    console.error('Upload error:', err);
-    alert('Upload failed: ' + err.message);
-  }
-};
+  };
 
 const handleDownload = async (file) => {
   try {
