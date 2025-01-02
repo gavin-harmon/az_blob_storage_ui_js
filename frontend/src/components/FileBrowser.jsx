@@ -75,7 +75,7 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-onst [uploadProgress, setUploadProgress] = useState(null);
+const [uploadProgress, setUploadProgress] = useState(null);
 
   const handleUpload = async (files) => {
     try {
