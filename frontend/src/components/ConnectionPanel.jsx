@@ -12,7 +12,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+    <div className="bg-grey rounded-lg shadow-sm p-6 border border-gray-200">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Azure Storage Connection</h2>
       
       {!isConnected ? (
