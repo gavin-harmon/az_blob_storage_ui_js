@@ -74,29 +74,31 @@ const handleUpload = async (files) => {
       ? azureConfig.sasToken 
       : `?${azureConfig.sasToken}`;
 
+    const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+    const blobServiceClient = new BlobServiceClient(`${baseUrl}${sasToken}`);
+    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+
     for (const file of files) {
+      console.log(`Starting upload of ${file.name} (${formatSize(file.size)})`);
+      
       // Construct the blob path
       const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-      const encodedPath = encodeURIComponent(blobPath);
-      
-      // Construct the URL
-      const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
-      
-      console.log('Uploading file:', file.name);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
 
-      // Upload the file using fetch
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'x-ms-blob-type': 'BlockBlob',
-          'Content-Type': file.type || 'application/octet-stream'
+      // Upload with progress tracking
+      await blockBlobClient.uploadData(file, {
+        onProgress: (ev) => {
+          const progress = (ev.loadedBytes / file.size) * 100;
+          console.log(`Upload progress for ${file.name}: ${progress.toFixed(2)}%`);
         },
-        body: file
+        blockSize: 4 * 1024 * 1024, // 4MB chunks
+        concurrency: 20, // Number of parallel uploads
+        blobHTTPHeaders: {
+          blobContentType: file.type || 'application/octet-stream'
+        }
       });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
+      
+      console.log(`Completed upload of ${file.name}`);
     }
     
     // Refresh the file list after uploads complete
