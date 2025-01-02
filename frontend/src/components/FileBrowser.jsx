@@ -35,7 +35,7 @@ const FileBrowser = ({
       new Map(
         [...files].sort((a, b) => 
           // If same name, prefer directory (changed from -1 to 1)
-          a.name === b.name ? (a.type === 'directory' ? 1 : -1) : 0
+           a.name === b.name ? (a.type === 'directory' ? -1 : 1) : 0
         ).map(item => [item.name, item])
       ).values()
     );
