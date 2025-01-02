@@ -90,9 +90,15 @@ const handleDownload = async (file) => {
   try {
     // Make sure path is URI encoded to handle spaces and special characters
     const encodedPath = encodeURIComponent(file.path);
-    const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${azureConfig.sasToken}`;
     
-    console.log('Download URL (without SAS):', `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}`); // Debug log, without exposing SAS
+    // Add the ? before the SAS token if it doesn't already have one
+    const sasToken = azureConfig.sasToken.startsWith('?') 
+      ? azureConfig.sasToken 
+      : `?${azureConfig.sasToken}`;
+
+    const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
+    
+    console.log('Download URL (without SAS):', `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}`);
 
     const link = document.createElement('a');
     link.href = url;
@@ -105,7 +111,6 @@ const handleDownload = async (file) => {
     alert('Download failed: ' + err.message);
   }
 };
-
   
   const pathParts = currentPath.split('/').filter(Boolean);
 
