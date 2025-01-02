@@ -67,24 +67,45 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-  const handleUpload = async (files) => {
-    try {
-      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
-      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+const handleUpload = async (files) => {
+  try {
+    // Add the ? before the SAS token if it doesn't already have one
+    const sasToken = azureConfig.sasToken.startsWith('?') 
+      ? azureConfig.sasToken 
+      : `?${azureConfig.sasToken}`;
 
-      for (const file of files) {
-        console.log('Uploading file:', file.name);
-        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-        await blockBlobClient.uploadBrowserData(file);
+    for (const file of files) {
+      // Construct the blob path
+      const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
+      const encodedPath = encodeURIComponent(blobPath);
+      
+      // Construct the URL
+      const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
+      
+      console.log('Uploading file:', file.name);
+
+      // Upload the file using fetch
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'x-ms-blob-type': 'BlockBlob',
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
       }
-      onNavigate(currentPath);
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Upload failed: ' + err.message);
     }
-  };
+    
+    // Refresh the file list after uploads complete
+    onNavigate(currentPath);
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('Upload failed: ' + err.message);
+  }
+};
 
 const handleDownload = async (file) => {
   try {
