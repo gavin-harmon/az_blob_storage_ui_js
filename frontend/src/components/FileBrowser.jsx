@@ -286,10 +286,23 @@ const FileBrowser = ({
                 className="hidden"
                 id="file-upload"
               />
-              <label
-                htmlFor="file-upload"
-                className="flex flex-col items-center justify-center cursor-pointer"
-              >
+                <label
+                  htmlFor="file-upload"
+                  className="flex flex-col items-center justify-center cursor-pointer"
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const droppedFiles = Array.from(e.dataTransfer.files);
+                    handleUpload(droppedFiles);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
                 <Upload className="h-8 w-8 text-gray-500 mb-2" />
                 <span className="text-sm text-gray-400">
                   Drop files here or click to upload
