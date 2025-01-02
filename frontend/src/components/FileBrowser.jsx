@@ -88,8 +88,15 @@ const FileBrowser = ({
 
 const handleDownload = async (file) => {
   try {
-    // Construct direct download URL
-    const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${file.path}${azureConfig.sasToken}`;
+    // Create the BlobServiceClient with SAS
+    const blobServiceClient = new BlobServiceClient(`${azureConfig.accountName}.blob.core.windows.net`, azureConfig.sasToken);
+    
+    // Get container client
+    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+    
+    // Generate direct download URL
+    const blobClient = containerClient.getBlobClient(file.path);
+    const url = blobClient.url + azureConfig.sasToken;
     
     // Create and click download link
     const link = document.createElement('a');
