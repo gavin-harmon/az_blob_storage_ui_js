@@ -98,8 +98,8 @@ const handleUpload = async (files) => {
             progress: progress.toFixed(1)
           }));
         },
-        blockSize: 4 * 1024 * 1024,
-        concurrency: 20,
+        blockSize: 4 * 1024 * 1024, // 4MB chunks
+        concurrency: 20, // Number of parallel uploads
         blobHTTPHeaders: {
           blobContentType: file.type || 'application/octet-stream'
         }
@@ -114,53 +114,7 @@ const handleUpload = async (files) => {
     setUploadProgress(null); // Clear progress on error
   }
 };
-
-// Modify your upload area JSX to show the progress
-      <div className="border-t border-gray-200 dark:border-dark-600 p-4">
-        <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
-          {uploadProgress ? (
-            <div className="text-center">
-              <div className="mb-2">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Uploading {uploadProgress.fileName}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-500">
-                  {uploadProgress.totalSize}
-                </div>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress.progress}%` }}
-                ></div>
-              </div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {uploadProgress.progress}%
-              </div>
-            </div>
-          ) : (
-            <>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => handleUpload(Array.from(e.target.files))}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="flex flex-col items-center justify-center cursor-pointer"
-              >
-                <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Drop files here or click to upload
-                </span>
-              </label>
-            </>
-          )}
-        </div>
-      </div>
-        
+          
   const handleDownload = async (file) => {
   try {
     // Make sure path is URI encoded to handle spaces and special characters
