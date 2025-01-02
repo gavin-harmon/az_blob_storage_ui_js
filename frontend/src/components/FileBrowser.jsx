@@ -88,16 +88,17 @@ const FileBrowser = ({
 
 const handleDownload = async (file) => {
   try {
-    // Make sure we construct the URL correctly with the SAS token
-    const blobServiceClient = new BlobServiceClient(
-      // Note: sasToken should include the leading '?' character
-      `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
-    );
-
-    console.log('Starting download with URL:', `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`); // Debug log
-
+    // Construct and log the full URL for debugging
+    const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+    const fullUrl = `${baseUrl}${azureConfig.sasToken}`;
+    console.log('Base URL:', baseUrl);
+    console.log('SAS Token Length:', azureConfig.sasToken.length);
+    
+    const blobServiceClient = new BlobServiceClient(fullUrl);
     const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(file.path);
+    
+    console.log('Blob URL:', blockBlobClient.url);
     
     const response = await blockBlobClient.download();
     const blob = await response.blobBody;
@@ -116,8 +117,7 @@ const handleDownload = async (file) => {
     console.error('Azure Config:', {
       accountName: azureConfig.accountName,
       containerName: azureConfig.containerName,
-      // Don't log full SAS token for security
-      sasTokenLength: azureConfig.sasToken?.length
+      sasTokenLength: azureConfig.sasToken.length
     });
     alert('Download failed: ' + err.message);
   }
