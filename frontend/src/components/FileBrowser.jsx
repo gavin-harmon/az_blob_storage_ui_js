@@ -30,11 +30,12 @@ const FileBrowser = ({
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
 
   const sortedFiles = useMemo(() => {
-    // First deduplicate by name, preferring directory type
+    // First deduplicate by name, preferring file type over directory (we need to flip this)
     const uniqueItems = Array.from(
       new Map(
         [...files].sort((a, b) => 
-          a.name === b.name ? (a.type === 'directory' ? -1 : 1) : 0
+          // If same name, prefer directory (changed from -1 to 1)
+          a.name === b.name ? (a.type === 'directory' ? 1 : -1) : 0
         ).map(item => [item.name, item])
       ).values()
     );
