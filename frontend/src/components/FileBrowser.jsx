@@ -67,6 +67,7 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
+  // Enhanced upload functionality using BlobServiceClient
   const handleUpload = async (files) => {
     try {
       const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
@@ -86,43 +87,33 @@ const FileBrowser = ({
     }
   };
 
-const handleDownload = async (file) => {
-  try {
-    // Make sure we construct the URL correctly with the SAS token
-    const blobServiceClient = new BlobServiceClient(
-      // Note: sasToken should include the leading '?' character
-      `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
-    );
+  // Enhanced download functionality using BlobServiceClient
+  const handleDownload = async (file) => {
+    try {
+      const blobServiceClient = new BlobServiceClient(
+        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
+      );
 
-    console.log('Starting download with URL:', `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`); // Debug log
-
-    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-    const blockBlobClient = containerClient.getBlockBlobClient(file.path);
-    
-    const response = await blockBlobClient.download();
-    const blob = await response.blobBody;
-    
-    // Create download link
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', file.name);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error('Download error:', err);
-    console.error('Azure Config:', {
-      accountName: azureConfig.accountName,
-      containerName: azureConfig.containerName,
-      // Don't log full SAS token for security
-      sasTokenLength: azureConfig.sasToken?.length
-    });
-    alert('Download failed: ' + err.message);
-  }
-};
-
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(file.path);
+      
+      const response = await blockBlobClient.download();
+      const blob = await response.blobBody;
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Download failed: ' + err.message);
+    }
+  };
+  
   const pathParts = currentPath.split('/').filter(Boolean);
 
   return (
@@ -192,7 +183,7 @@ const handleDownload = async (file) => {
             >
               <div className="col-span-6">
                 <button
-                  onClick={() => item.type === 'directory' && onNavigate(item.path)}
+                  onClick={() => item.type === 'directory' ? onNavigate(item.path) : null}
                   className="flex items-center space-x-2 text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400"
                 >
                   {item.type === 'directory' ? (
