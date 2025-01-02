@@ -13,13 +13,6 @@ import {
 } from 'lucide-react';
 import NewFolderDialog from './NewFolderDialog';
 
-const formatSize = (bytes) => {
-  if (!bytes) return '-';
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-};
-
 const FileBrowser = ({ 
   files = [], 
   currentPath = '',
@@ -145,136 +138,133 @@ const FileBrowser = ({
   const pathParts = currentPath.split('/').filter(Boolean);
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-[#1a1f2e] text-gray-100 rounded-lg overflow-hidden">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 mb-4 text-sm">
-        <span 
-          className="cursor-pointer hover:text-blue-600"
-          onClick={() => onNavigate('')}
-        >
-          Root
-        </span>
-        {pathParts.map((part, index) => (
-          <React.Fragment key={part}>
-            <ChevronRight className="h-4 w-4" />
-            <span 
-              className="cursor-pointer hover:text-blue-600"
-              onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
-            >
-              {part}
-            </span>
-          </React.Fragment>
-        ))}
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center text-sm">
+          <button 
+            onClick={() => onNavigate('')}
+            className="text-blue-400 hover:text-blue-300"
+          >
+            Root
+          </button>
+          {pathParts.map((part, index) => (
+            <React.Fragment key={index}>
+              <ChevronRight className="h-4 w-4 mx-2 text-gray-500" />
+              <button
+                onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
+                className="text-blue-400 hover:text-blue-300"
+              >
+                {part}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {/* Actions Bar */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="p-3">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
         >
-          <FolderPlus className="h-4 w-4" />
+          <FolderPlus className="h-4 w-4 mr-2" />
           New Folder
         </button>
       </div>
 
-      {/* File List */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-12 gap-4 p-3 bg-gray-100 dark:bg-gray-800 border-b">
-          <div className="col-span-6 flex items-center gap-2 cursor-pointer" onClick={() => requestSort('name')}>
-            Name
-            <SortIcon column="name" />
-          </div>
-          <div className="col-span-3 flex items-center gap-2 cursor-pointer" onClick={() => requestSort('size')}>
-            Size
-            <SortIcon column="size" />
-          </div>
-          <div className="col-span-3">
+      {/* File List Header */}
+      <div className="px-4 py-2 bg-[#1a1f2e] border-y border-gray-700">
+        <div className="grid grid-cols-12 gap-4">
+          <button 
+            onClick={() => requestSort('name')}
+            className="col-span-6 flex items-center text-sm text-gray-300"
+          >
+            Name <SortIcon column="name" />
+          </button>
+          <button
+            onClick={() => requestSort('size')}
+            className="col-span-3 flex items-center text-sm text-gray-300"
+          >
+            Size <SortIcon column="size" />
+          </button>
+          <div className="col-span-3 text-sm text-gray-300">
             Actions
           </div>
         </div>
+      </div>
 
-        {sortedFiles.map(file => (
-          <div key={file.name} className="grid grid-cols-12 gap-4 p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-            <div className="col-span-6 flex items-center gap-2">
-              {file.type === 'directory' ? (
-                <Folder className="h-5 w-5 text-blue-600" />
-              ) : (
-                <File className="h-5 w-5 text-gray-600" />
-              )}
-              <span 
-                className="cursor-pointer hover:text-blue-600"
-                onClick={() => file.type === 'directory' ? onNavigate(`${currentPath}/${file.name}`.replace(/^\//, '')) : null}
-              >
-                {file.name}
-              </span>
-            </div>
-            <div className="col-span-3">
-              {formatSize(file.size)}
-            </div>
-            <div className="col-span-3 flex items-center gap-2">
-              {file.type !== 'directory' && (
+      {/* File List */}
+      <div>
+        {isLoading ? (
+          <div className="p-8 text-center text-gray-400">Loading...</div>
+        ) : sortedFiles.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">No files found</div>
+        ) : (
+          sortedFiles.map((item) => (
+            <div 
+              key={item.name}
+              className="px-4 py-2 hover:bg-gray-800 border-b border-gray-700 grid grid-cols-12 gap-4 items-center"
+            >
+              <div className="col-span-6">
                 <button
-                  onClick={() => handleDownload(file)}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  onClick={() => item.type === 'directory' && onNavigate(item.path)}
+                  className="flex items-center space-x-2 hover:text-blue-400"
                 >
-                  Download
+                  {item.type === 'directory' ? (
+                    <Folder className="h-5 w-5 text-blue-400" />
+                  ) : (
+                    <File className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span>{item.name}</span>
                 </button>
-              )}
-              <button
-                onClick={() => onDelete(file)}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-red-600"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              </div>
+              <div className="col-span-3 text-sm text-gray-300">
+                {item.type === 'directory' ? '-' : formatSize(item.size)}
+              </div>
+              <div className="col-span-3 flex space-x-2">
+                {item.type !== 'directory' && (
+                  <>
+                    <button
+                      onClick={() => handleDownload(item)}
+                      className="text-gray-300 hover:text-blue-400 text-sm"
+                    >
+                      Download
+                    </button>
+                    <button
+                      onClick={() => onDelete(item)}
+                      className="text-gray-300 hover:text-red-400"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Upload Area */}
-      <div className="border-t border-gray-200 dark:border-dark-600 p-4 mt-4">
-        <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
-          {uploadProgress ? (
-            <div className="text-center">
-              <div className="mb-2">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Uploading {uploadProgress.fileName}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-500">
-                  {uploadProgress.totalSize}
-                </div>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
-                <div 
-                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress.progress}%` }}
-                ></div>
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {uploadProgress.progress}% complete
-              </div>
-            </div>
-          ) : (
-            <>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => handleUpload(Array.from(e.target.files))}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="flex flex-col items-center justify-center cursor-pointer"
-              >
-                <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Drop files here or click to upload
-                </span>
-              </label>
-            </>
-          )}
+      <div className="p-4 border-t border-gray-700">
+        <div className="border-2 border-dashed border-gray-600 rounded-lg p-8">
+          <input
+            type="file"
+            multiple
+            onChange={(e) => handleUpload(Array.from(e.target.files))}
+            className="hidden"
+            id="file-upload"
+          />
+          <label
+            htmlFor="file-upload"
+            className="flex flex-col items-center justify-center cursor-pointer"
+          >
+            <Upload className="h-8 w-8 text-gray-500 mb-2" />
+            <span className="text-sm text-gray-400">
+              Drop files here or click to upload
+            </span>
+          </label>
         </div>
       </div>
 
@@ -286,6 +276,13 @@ const FileBrowser = ({
       />
     </div>
   );
+};
+
+const formatSize = (bytes) => {
+  if (!bytes) return '-';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 };
 
 export default FileBrowser;
