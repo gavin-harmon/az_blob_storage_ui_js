@@ -88,17 +88,12 @@ const FileBrowser = ({
 
 const handleDownload = async (file) => {
   try {
-    // Create the BlobServiceClient with SAS
-    const blobServiceClient = new BlobServiceClient(`${azureConfig.accountName}.blob.core.windows.net`, azureConfig.sasToken);
+    // Make sure path is URI encoded to handle spaces and special characters
+    const encodedPath = encodeURIComponent(file.path);
+    const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${azureConfig.sasToken}`;
     
-    // Get container client
-    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-    
-    // Generate direct download URL
-    const blobClient = containerClient.getBlobClient(file.path);
-    const url = blobClient.url + azureConfig.sasToken;
-    
-    // Create and click download link
+    console.log('Download URL (without SAS):', `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}`); // Debug log, without exposing SAS
+
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', file.name);
@@ -111,6 +106,7 @@ const handleDownload = async (file) => {
   }
 };
 
+  
   const pathParts = currentPath.split('/').filter(Boolean);
 
   return (
