@@ -88,37 +88,25 @@ const FileBrowser = ({
 
 const handleDownload = async (file) => {
   try {
-    // Construct and log the full URL for debugging
-    const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-    const fullUrl = `${baseUrl}${azureConfig.sasToken}`;
-    console.log('Base URL:', baseUrl);
-    console.log('SAS Token Length:', azureConfig.sasToken.length);
+    // Create the BlobServiceClient with SAS
+    const blobServiceClient = new BlobServiceClient(`${azureConfig.accountName}.blob.core.windows.net`, azureConfig.sasToken);
     
-    const blobServiceClient = new BlobServiceClient(fullUrl);
+    // Get container client
     const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-    const blockBlobClient = containerClient.getBlockBlobClient(file.path);
     
-    console.log('Blob URL:', blockBlobClient.url);
+    // Generate direct download URL
+    const blobClient = containerClient.getBlobClient(file.path);
+    const url = blobClient.url + azureConfig.sasToken;
     
-    const response = await blockBlobClient.download();
-    const blob = await response.blobBody;
-    
-    // Create download link
-    const url = window.URL.createObjectURL(blob);
+    // Create and click download link
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', file.name);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
   } catch (err) {
     console.error('Download error:', err);
-    console.error('Azure Config:', {
-      accountName: azureConfig.accountName,
-      containerName: azureConfig.containerName,
-      sasTokenLength: azureConfig.sasToken.length
-    });
     alert('Download failed: ' + err.message);
   }
 };
