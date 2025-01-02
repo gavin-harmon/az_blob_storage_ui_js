@@ -156,7 +156,7 @@ const FileBrowser = ({
         <div className="flex items-center text-sm">
           <button 
             onClick={() => onNavigate('')}
-            className="text-blue-400 hover:text-blue-300"
+            className="text-green-400 hover:text-green-300"
           >
             Root
           </button>
@@ -165,7 +165,7 @@ const FileBrowser = ({
               <ChevronRight className="h-4 w-4 mx-2 text-gray-500" />
               <button
                 onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
-                className="text-blue-400 hover:text-blue-300"
+                className="text-green-400 hover:text-green-300"
               >
                 {part}
               </button>
@@ -177,7 +177,7 @@ const FileBrowser = ({
       <div className="p-3">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
-          className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+          className="inline-flex items-center px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600"
         >
           <FolderPlus className="h-4 w-4 mr-2" />
           New Folder
@@ -218,10 +218,10 @@ const FileBrowser = ({
               <div className="col-span-6">
                 <button
                   onClick={() => item.type === 'directory' && onNavigate(item.path)}
-                  className="flex items-center space-x-2 hover:text-blue-400"
+                  className="flex items-center space-x-2 hover:text-green-400"
                 >
                   {item.type === 'directory' ? (
-                    <Folder className="h-5 w-5 text-blue-400" />
+                    <Folder className="h-5 w-5 text-green-400" />
                   ) : (
                     <File className="h-5 w-5 text-gray-400" />
                   )}
@@ -236,7 +236,7 @@ const FileBrowser = ({
                   <>
                     <button
                       onClick={() => handleDownload(item)}
-                      className="text-gray-300 hover:text-blue-400 text-sm"
+                      className="text-gray-300 hover:text-green-400 text-sm"
                     >
                       Download
                     </button>
