@@ -67,7 +67,7 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-  // Enhanced upload functionality using BlobServiceClient
+  // Original working upload functionality
   const handleUpload = async (files) => {
     try {
       const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
@@ -87,12 +87,14 @@ const FileBrowser = ({
     }
   };
 
-  // Enhanced download functionality using BlobServiceClient
+  // Original working download functionality
   const handleDownload = async (file) => {
     try {
       const blobServiceClient = new BlobServiceClient(
         `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
       );
+
+      console.log('Starting download...');
 
       const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
       const blockBlobClient = containerClient.getBlockBlobClient(file.path);
@@ -110,6 +112,11 @@ const FileBrowser = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download error:', err);
+      console.error('Azure Config:', {
+        accountName: azureConfig.accountName,
+        containerName: azureConfig.containerName,
+        sasTokenLength: azureConfig.sasToken?.length
+      });
       alert('Download failed: ' + err.message);
     }
   };
@@ -182,17 +189,20 @@ const FileBrowser = ({
               className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50/50 dark:hover:bg-dark-600/50 group"
             >
               <div className="col-span-6">
-                <button
-                  onClick={() => item.type === 'directory' ? onNavigate(item.path) : null}
-                  className="flex items-center space-x-2 text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400"
-                >
-                  {item.type === 'directory' ? (
+                {item.type === 'directory' ? (
+                  <button
+                    onClick={() => onNavigate(item.path)}
+                    className="flex items-center space-x-2 text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400"
+                  >
                     <Folder className="h-5 w-5 text-green-500 dark:text-green-400" />
-                  ) : (
+                    <span className="truncate font-medium">{item.name}</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center space-x-2 text-gray-900 dark:text-gray-100">
                     <File className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                  )}
-                  <span className="truncate font-medium">{item.name}</span>
-                </button>
+                    <span className="truncate font-medium">{item.name}</span>
+                  </div>
+                )}
               </div>
               
               <div className="col-span-3 text-sm text-gray-700 dark:text-gray-300">
