@@ -28,7 +28,6 @@ const FileBrowser = ({
   });
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null);
 
   const sortedFiles = useMemo(() => {
     const sortedItems = [...files];
@@ -74,54 +73,47 @@ const FileBrowser = ({
         ? azureConfig.sasToken 
         : `?${azureConfig.sasToken}`;
 
-      const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-      const blobServiceClient = new BlobServiceClient(`${baseUrl}${sasToken}`);
-      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-
       for (const file of files) {
-        setUploadProgress({
-          fileName: file.name,
-          progress: 0,
-          totalSize: formatSize(file.size)
-        });
-
         const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+        const encodedPath = encodeURIComponent(blobPath);
+        
+        const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
+        
+        console.log('Uploading file:', file.name);
 
-        await blockBlobClient.uploadData(file, {
-          onProgress: (ev) => {
-            const progress = (ev.loadedBytes / file.size) * 100;
-            setUploadProgress(prev => ({
-              ...prev,
-              progress: progress.toFixed(1)
-            }));
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'x-ms-blob-type': 'BlockBlob',
+            'Content-Type': file.type || 'application/octet-stream'
           },
-          blockSize: 4 * 1024 * 1024,
-          concurrency: 20,
-          blobHTTPHeaders: {
-            blobContentType: file.type || 'application/octet-stream'
-          }
+          body: file
         });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status: ${response.status}`);
+        }
       }
       
-      setUploadProgress(null);
       onNavigate(currentPath);
     } catch (err) {
       console.error('Upload error:', err);
       alert('Upload failed: ' + err.message);
-      setUploadProgress(null);
     }
   };
-          
+
   const handleDownload = async (file) => {
     try {
       const encodedPath = encodeURIComponent(file.path);
+      
       const sasToken = azureConfig.sasToken.startsWith('?') 
         ? azureConfig.sasToken 
         : `?${azureConfig.sasToken}`;
 
       const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
       
+      console.log('Download URL (without SAS):', `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}`);
+
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', file.name);
@@ -148,7 +140,7 @@ const FileBrowser = ({
         </span>
         {pathParts.map((part, index) => (
           <React.Fragment key={part}>
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 text-gray-400" />
             <span
               className="cursor-pointer hover:text-blue-600"
               onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
@@ -159,7 +151,7 @@ const FileBrowser = ({
         ))}
       </div>
 
-      {/* Actions Row */}
+      {/* Action Buttons */}
       <div className="flex justify-between mb-4">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
@@ -171,48 +163,68 @@ const FileBrowser = ({
       </div>
 
       {/* File List Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-t-lg">
-        <div className="col-span-6 flex items-center cursor-pointer" onClick={() => requestSort('name')}>
-          <span className="mr-2">Name</span>
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50">
+        <button 
+          onClick={() => requestSort('name')}
+          className="col-span-6 flex items-center text-sm font-medium text-gray-700"
+        >
+          <span>Name</span>
           <SortIcon column="name" />
-        </div>
-        <div className="col-span-3 flex items-center cursor-pointer" onClick={() => requestSort('size')}>
-          <span className="mr-2">Size</span>
+        </button>
+        <button
+          onClick={() => requestSort('size')}
+          className="col-span-3 flex items-center text-sm font-medium text-gray-700"
+        >
+          <span>Size</span>
           <SortIcon column="size" />
+        </button>
+        <div className="col-span-3 text-sm font-medium text-gray-700">
+          Actions
         </div>
-        <div className="col-span-3">Actions</div>
       </div>
 
       {/* File List */}
-      <div className="border rounded-b-lg">
+      <div className="bg-white">
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">Loading...</div>
         ) : sortedFiles.length === 0 ? (
           <div className="p-4 text-center text-gray-500">No files found</div>
         ) : (
-          sortedFiles.map((file) => (
-            <div key={file.name} className="grid grid-cols-12 gap-4 px-4 py-2 border-b last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800">
-              <div className="col-span-6 flex items-center">
-                {file.type === 'directory' ? (
-                  <Folder className="h-5 w-5 mr-2 text-blue-600" />
-                ) : (
-                  <File className="h-5 w-5 mr-2 text-gray-400" />
-                )}
-                <span
-                  className="cursor-pointer hover:text-blue-600"
-                  onClick={() => file.type === 'directory' ? onNavigate(`${currentPath}/${file.name}`.replace(/^\//, '')) : handleDownload(file)}
+          sortedFiles.map((item) => (
+            <div 
+              key={item.name}
+              className="grid grid-cols-12 gap-4 px-4 py-2 hover:bg-gray-50 items-center"
+            >
+              <div className="col-span-6">
+                <div 
+                  onClick={() => item.type === 'directory' ? onNavigate(`${currentPath}/${item.name}`.replace(/^\//, '')) : handleDownload(item)}
+                  className="flex items-center space-x-2 cursor-pointer"
                 >
-                  {file.name}
-                </span>
+                  {item.type === 'directory' ? (
+                    <Folder className="h-5 w-5 text-blue-500" />
+                  ) : (
+                    <File className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className="truncate hover:text-blue-600">{item.name}</span>
+                </div>
               </div>
-              <div className="col-span-3">{formatSize(file.size)}</div>
+              
+              <div className="col-span-3 text-sm text-gray-600">
+                {item.type === 'directory' ? '-' : formatSize(item.size)}
+              </div>
+              
               <div className="col-span-3">
-                <button
-                  onClick={() => onDelete(file)}
-                  className="p-1 text-red-600 hover:bg-red-50 rounded"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex space-x-2">
+                  {item.type === 'file' && (
+                    <button
+                      onClick={() => onDelete(item)}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -220,48 +232,24 @@ const FileBrowser = ({
       </div>
 
       {/* Upload Area */}
-      <div className="border-t border-gray-200 dark:border-dark-600 p-4 mt-4">
-        <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
-          {uploadProgress ? (
-            <div className="text-center">
-              <div className="mb-2">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Uploading {uploadProgress.fileName}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-500">
-                  {uploadProgress.totalSize}
-                </div>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
-                <div 
-                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress.progress}%` }}
-                ></div>
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {uploadProgress.progress}% complete
-              </div>
-            </div>
-          ) : (
-            <>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => handleUpload(Array.from(e.target.files))}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="flex flex-col items-center justify-center cursor-pointer"
-              >
-                <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Drop files here or click to upload
-                </span>
-              </label>
-            </>
-          )}
+      <div className="border-t border-gray-200 p-4 mt-4">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+          <input
+            type="file"
+            multiple
+            onChange={(e) => handleUpload(Array.from(e.target.files))}
+            className="hidden"
+            id="file-upload"
+          />
+          <label
+            htmlFor="file-upload"
+            className="flex flex-col items-center justify-center cursor-pointer"
+          >
+            <Upload className="h-8 w-8 text-gray-400 mb-2" />
+            <span className="text-sm text-gray-600">
+              Drop files here or click to upload
+            </span>
+          </label>
         </div>
       </div>
 
