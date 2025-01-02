@@ -30,14 +30,14 @@ const FileBrowser = ({
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
 
   const sortedFiles = useMemo(() => {
-    // First deduplicate by name, preferring file type over directory (we need to flip this)
-    const uniqueItems = Array.from(
-      new Map(
-        [...files].sort((a, b) => 
-          // If same name, prefer directory (changed from -1 to 1)
-           a.name === b.name ? (a.type === 'directory' ? -1 : 1) : 0
-        ).map(item => [item.name, item])
-      ).values()
+    // First find all directory names
+    const directoryNames = new Set(
+      files.filter(f => f.type === 'directory').map(f => f.name)
+    );
+
+    // Filter out files that have the same name as a directory
+    const uniqueItems = files.filter(file => 
+      !(file.type === 'file' && directoryNames.has(file.name))
     );
     
     return uniqueItems.sort((a, b) => {
