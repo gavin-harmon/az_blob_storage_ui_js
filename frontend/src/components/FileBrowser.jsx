@@ -177,7 +177,7 @@ const FileBrowser = ({
       <div className="p-3">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
-          className="inline-flex items-center px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+          className="inline-flex items-center px-3 py-1.5 bg-green-500 text-black text-sm rounded hover:bg-green-600"
         >
           <FolderPlus className="h-4 w-4 mr-2" />
           New Folder
