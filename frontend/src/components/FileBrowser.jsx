@@ -69,32 +69,16 @@ const FileBrowser = ({
 
   const handleUpload = async (files) => {
     try {
-      const sasToken = azureConfig.sasToken.startsWith('?') 
-        ? azureConfig.sasToken 
-        : `?${azureConfig.sasToken}`;
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
       for (const file of files) {
-        const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const encodedPath = encodeURIComponent(blobPath);
-        
-        const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
-        
         console.log('Uploading file:', file.name);
-
-        const response = await fetch(url, {
-          method: 'PUT',
-          headers: {
-            'x-ms-blob-type': 'BlockBlob',
-            'Content-Type': file.type || 'application/octet-stream'
-          },
-          body: file
-        });
-
-        if (!response.ok) {
-          throw new Error(`Upload failed with status: ${response.status}`);
-        }
+        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        await blockBlobClient.uploadBrowserData(file);
       }
-      
       onNavigate(currentPath);
     } catch (err) {
       console.error('Upload error:', err);
@@ -102,127 +86,147 @@ const FileBrowser = ({
     }
   };
 
-  const handleDownload = async (file) => {
-    try {
-      const encodedPath = encodeURIComponent(file.path);
-      
-      const sasToken = azureConfig.sasToken.startsWith('?') 
-        ? azureConfig.sasToken 
-        : `?${azureConfig.sasToken}`;
+const handleDownload = async (file) => {
+  try {
+    // Make sure we construct the URL correctly with the SAS token
+    const blobServiceClient = new BlobServiceClient(
+      // Note: sasToken should include the leading '?' character
+      `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
+    );
 
-      const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
-      
-      console.log('Download URL (without SAS):', `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}`);
+    console.log('Starting download with URL:', `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`); // Debug log
 
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.name);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      console.error('Download error:', err);
-      alert('Download failed: ' + err.message);
-    }
-  };
-  
+    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(file.path);
+    
+    const response = await blockBlobClient.download();
+    const blob = await response.blobBody;
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', file.name);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Download error:', err);
+    console.error('Azure Config:', {
+      accountName: azureConfig.accountName,
+      containerName: azureConfig.containerName,
+      // Don't log full SAS token for security
+      sasTokenLength: azureConfig.sasToken?.length
+    });
+    alert('Download failed: ' + err.message);
+  }
+};
+
   const pathParts = currentPath.split('/').filter(Boolean);
 
   return (
-    <div className="w-full">
-      {/* Path Navigation */}
-      <div className="flex items-center space-x-1 mb-4 text-sm">
-        <span
-          className="cursor-pointer hover:text-blue-600"
-          onClick={() => onNavigate('')}
-        >
-          Root
-        </span>
-        {pathParts.map((part, index) => (
-          <React.Fragment key={part}>
-            <ChevronRight className="h-4 w-4 text-gray-400" />
-            <span
-              className="cursor-pointer hover:text-blue-600"
-              onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
-            >
-              {part}
-            </span>
-          </React.Fragment>
-        ))}
+    <div className="bg-white dark:bg-dark-700 rounded-lg shadow-sm border border-gray-200 dark:border-dark-600">
+      <div className="p-4 border-b border-gray-200 dark:border-dark-600">
+        <div className="flex items-center text-sm">
+          <button 
+            onClick={() => onNavigate('')}
+            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+          >
+            Root
+          </button>
+          {pathParts.map((part, index) => (
+            <React.Fragment key={index}>
+              <ChevronRight className="h-4 w-4 mx-2 text-gray-400" />
+              <button
+                onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
+                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+              >
+                {part}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between mb-4">
+      <div className="flex justify-end px-4 py-2 border-b border-gray-200 dark:border-dark-600">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
-          className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/20 rounded-md"
         >
-          <FolderPlus className="h-4 w-4 mr-2" />
+          <FolderPlus className="h-4 w-4" />
           New Folder
         </button>
       </div>
 
-      {/* File List Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50">
-        <button 
-          onClick={() => requestSort('name')}
-          className="col-span-6 flex items-center text-sm font-medium text-gray-700"
-        >
-          <span>Name</span>
-          <SortIcon column="name" />
-        </button>
-        <button
-          onClick={() => requestSort('size')}
-          className="col-span-3 flex items-center text-sm font-medium text-gray-700"
-        >
-          <span>Size</span>
-          <SortIcon column="size" />
-        </button>
-        <div className="col-span-3 text-sm font-medium text-gray-700">
-          Actions
+      <div className="divide-y divide-gray-200 dark:divide-dark-600">
+        <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 dark:bg-dark-800">
+          <button 
+            onClick={() => requestSort('name')}
+            className="col-span-6 flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400"
+          >
+            <span>Name</span>
+            <SortIcon column="name" />
+          </button>
+          <button
+            onClick={() => requestSort('size')}
+            className="col-span-3 flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400"
+          >
+            <span>Size</span>
+            <SortIcon column="size" />
+          </button>
+          <div className="col-span-3 text-sm font-medium text-gray-700 dark:text-gray-200">
+            Actions
+          </div>
         </div>
-      </div>
 
-      {/* File List */}
-      <div className="bg-white">
         {isLoading ? (
-          <div className="p-4 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-300">Loading...</div>
         ) : sortedFiles.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">No files found</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-300">No files found</div>
         ) : (
-          sortedFiles.map((item) => (
+          sortedFiles.map((item, index) => (
             <div 
-              key={item.name}
-              className="grid grid-cols-12 gap-4 px-4 py-2 hover:bg-gray-50 items-center"
+              key={index}
+              className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50/50 dark:hover:bg-dark-600/50 group"
             >
               <div className="col-span-6">
-                <div 
-                  onClick={() => item.type === 'directory' ? onNavigate(`${currentPath}/${item.name}`.replace(/^\//, '')) : handleDownload(item)}
-                  className="flex items-center space-x-2 cursor-pointer"
+                <button
+                  onClick={() => item.type === 'directory' && onNavigate(item.path)}
+                  className="flex items-center space-x-2 text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400"
                 >
                   {item.type === 'directory' ? (
-                    <Folder className="h-5 w-5 text-blue-500" />
+                    <Folder className="h-5 w-5 text-green-500 dark:text-green-400" />
                   ) : (
-                    <File className="h-5 w-5 text-gray-400" />
+                    <File className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   )}
-                  <span className="truncate hover:text-blue-600">{item.name}</span>
-                </div>
+                  <span className="truncate font-medium">{item.name}</span>
+                </button>
               </div>
               
-              <div className="col-span-3 text-sm text-gray-600">
+              <div className="col-span-3 text-sm text-gray-700 dark:text-gray-300">
                 {item.type === 'directory' ? '-' : formatSize(item.size)}
               </div>
               
               <div className="col-span-3">
                 <div className="flex space-x-2">
                   {item.type === 'file' && (
-                    <button
-                      onClick={() => onDelete(item)}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleDownload(item)}
+                        className="p-1.5 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/20 rounded-md"
+                        title="Download"
+                      >
+                        Download
+                      </button>
+                      <button
+                        onClick={() => onDelete(item)}
+                        className="p-1.5 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/20 rounded-md"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -231,9 +235,8 @@ const FileBrowser = ({
         )}
       </div>
 
-      {/* Upload Area */}
-      <div className="border-t border-gray-200 p-4 mt-4">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+      <div className="border-t border-gray-200 dark:border-dark-600 p-4">
+        <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
           <input
             type="file"
             multiple
@@ -245,8 +248,8 @@ const FileBrowser = ({
             htmlFor="file-upload"
             className="flex flex-col items-center justify-center cursor-pointer"
           >
-            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-            <span className="text-sm text-gray-600">
+            <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               Drop files here or click to upload
             </span>
           </label>
