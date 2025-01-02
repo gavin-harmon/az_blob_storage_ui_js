@@ -28,6 +28,7 @@ const FileBrowser = ({
   });
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const sortedFiles = useMemo(() => {
     // First find all directory names
@@ -75,8 +76,6 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-const [uploadProgress, setUploadProgress] = useState(null);
-
   const handleUpload = async (files) => {
     try {
       const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
@@ -104,51 +103,50 @@ const [uploadProgress, setUploadProgress] = useState(null);
               progress: progress.toFixed(1)
             }));
           },
-          blockSize: 4 * 1024 * 1024, // 4MB chunks
-          concurrency: 20, // Number of parallel uploads
+          blockSize: 4 * 1024 * 1024,
+          concurrency: 20,
           blobHTTPHeaders: {
             blobContentType: file.type || 'application/octet-stream'
           }
         });
       }
       
-      setUploadProgress(null); // Clear progress after completion
+      setUploadProgress(null);
       onNavigate(currentPath);
     } catch (err) {
       console.error('Upload error:', err);
       alert('Upload failed: ' + err.message);
-      setUploadProgress(null); // Clear progress on error
+      setUploadProgress(null);
     }
   };
 
-const handleDownload = async (file) => {
-  try {
-    // Fix: Ensure sasToken is attached to baseUrl correctly
-    const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-    const sasToken = azureConfig.sasToken.startsWith('?') 
-      ? azureConfig.sasToken 
-      : `?${azureConfig.sasToken}`;
-    const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
+  const handleDownload = async (file) => {
+    try {
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const sasToken = azureConfig.sasToken.startsWith('?') 
+        ? azureConfig.sasToken 
+        : `?${azureConfig.sasToken}`;
+      const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
 
-    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-    const blockBlobClient = containerClient.getBlockBlobClient(file.path);
-    
-    const response = await blockBlobClient.download();
-    const blob = await response.blobBody;
-    
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', file.name);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error('Download error:', err);
-    alert('Download failed: ' + err.message);
-  }
-};
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(file.path);
+      
+      const response = await blockBlobClient.download();
+      const blob = await response.blobBody;
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Download failed: ' + err.message);
+    }
+  };
 
   const pathParts = currentPath.split('/').filter(Boolean);
 
@@ -259,22 +257,46 @@ const handleDownload = async (file) => {
 
       <div className="p-4 border-t border-gray-700">
         <div className="border-2 border-dashed border-gray-600 rounded-lg p-8">
-          <input
-            type="file"
-            multiple
-            onChange={(e) => handleUpload(Array.from(e.target.files))}
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="flex flex-col items-center justify-center cursor-pointer"
-          >
-            <Upload className="h-8 w-8 text-gray-500 mb-2" />
-            <span className="text-sm text-gray-400">
-              Drop files here or click to upload
-            </span>
-          </label>
+          {uploadProgress ? (
+            <div className="text-center">
+              <div className="mb-2">
+                <div className="text-sm text-gray-400">
+                  Uploading {uploadProgress.fileName}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {uploadProgress.totalSize}
+                </div>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                <div 
+                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress.progress}%` }}
+                ></div>
+              </div>
+              <div className="text-sm text-gray-400">
+                {uploadProgress.progress}% complete
+              </div>
+            </div>
+          ) : (
+            <>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => handleUpload(Array.from(e.target.files))}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="flex flex-col items-center justify-center cursor-pointer"
+              >
+                <Upload className="h-8 w-8 text-gray-500 mb-2" />
+                <span className="text-sm text-gray-400">
+                  Drop files here or click to upload
+                </span>
+              </label>
+            </>
+          )}
         </div>
       </div>
 
