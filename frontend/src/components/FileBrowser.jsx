@@ -29,6 +29,8 @@ const FileBrowser = ({
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
 
+  const [uploadProgress, setUploadProgress] = useState(null); // null when not uploading, object with progress info when uploading
+
   const sortedFiles = useMemo(() => {
     const sortedItems = [...files];
     
@@ -67,9 +69,9 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
+// Modified upload handler
 const handleUpload = async (files) => {
   try {
-    // Add the ? before the SAS token if it doesn't already have one
     const sasToken = azureConfig.sasToken.startsWith('?') 
       ? azureConfig.sasToken 
       : `?${azureConfig.sasToken}`;
@@ -79,35 +81,85 @@ const handleUpload = async (files) => {
     const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
     for (const file of files) {
-      console.log(`Starting upload of ${file.name} (${formatSize(file.size)})`);
-      
-      // Construct the blob path
+      setUploadProgress({
+        fileName: file.name,
+        progress: 0,
+        totalSize: formatSize(file.size)
+      });
+
       const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
       const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
 
-      // Upload with progress tracking
       await blockBlobClient.uploadData(file, {
         onProgress: (ev) => {
           const progress = (ev.loadedBytes / file.size) * 100;
-          console.log(`Upload progress for ${file.name}: ${progress.toFixed(2)}%`);
+          setUploadProgress(prev => ({
+            ...prev,
+            progress: progress.toFixed(1)
+          }));
         },
-        blockSize: 4 * 1024 * 1024, // 4MB chunks
-        concurrency: 20, // Number of parallel uploads
+        blockSize: 4 * 1024 * 1024,
+        concurrency: 20,
         blobHTTPHeaders: {
           blobContentType: file.type || 'application/octet-stream'
         }
       });
-      
-      console.log(`Completed upload of ${file.name}`);
     }
     
-    // Refresh the file list after uploads complete
+    setUploadProgress(null); // Clear progress after completion
     onNavigate(currentPath);
   } catch (err) {
     console.error('Upload error:', err);
     alert('Upload failed: ' + err.message);
+    setUploadProgress(null); // Clear progress on error
   }
 };
+
+// Modify your upload area JSX to show the progress
+<div className="border-t border-gray-200 dark:border-dark-600 p-4">
+  <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
+    {uploadProgress ? (
+      <div className="text-center">
+        <div className="mb-2">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Uploading {uploadProgress.fileName}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-500">
+            {uploadProgress.totalSize}
+          </div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div 
+            className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+            style={{ width: `${uploadProgress.progress}%` }}
+          ></div>
+        </div>
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {uploadProgress.progress}%
+        </div>
+      </div>
+    ) : (
+      <>
+        <input
+          type="file"
+          multiple
+          onChange={(e) => handleUpload(Array.from(e.target.files))}
+          className="hidden"
+          id="file-upload"
+        />
+        <label
+          htmlFor="file-upload"
+          className="flex flex-col items-center justify-center cursor-pointer"
+        >
+          <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Drop files here or click to upload
+          </span>
+        </label>
+      </>
+    )}
+  </div>
+</div>
 
 const handleDownload = async (file) => {
   try {
