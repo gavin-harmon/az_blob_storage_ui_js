@@ -75,50 +75,60 @@ const FileBrowser = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
-  const handleUpload = async (files) => {
-    try {
-      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
-      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+const handleUpload = async (files) => {
+  try {
+    // Fix: Ensure sasToken is attached to baseUrl correctly
+    const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+    const sasToken = azureConfig.sasToken.startsWith('?') 
+      ? azureConfig.sasToken 
+      : `?${azureConfig.sasToken}`;
+    const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
 
-      for (const file of files) {
-        console.log('Uploading file:', file.name);
-        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-        await blockBlobClient.uploadBrowserData(file);
-      }
-      onNavigate(currentPath);
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Upload failed: ' + err.message);
+    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+
+    for (const file of files) {
+      console.log('Uploading file:', file.name);
+      const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+      await blockBlobClient.uploadData(file, {
+        blobHTTPHeaders: { blobContentType: file.type || 'application/octet-stream' }
+      });
     }
-  };
+    onNavigate(currentPath);
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('Upload failed: ' + err.message);
+  }
+};
 
-  const handleDownload = async (file) => {
-    try {
-      const blobServiceClient = new BlobServiceClient(
-        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
-      );
+const handleDownload = async (file) => {
+  try {
+    // Fix: Ensure sasToken is attached to baseUrl correctly
+    const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+    const sasToken = azureConfig.sasToken.startsWith('?') 
+      ? azureConfig.sasToken 
+      : `?${azureConfig.sasToken}`;
+    const blobServiceClient = new BlobServiceClient(`${accountUrl}${sasToken}`);
 
-      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
-      const blockBlobClient = containerClient.getBlockBlobClient(file.path);
-      
-      const response = await blockBlobClient.download();
-      const blob = await response.blobBody;
-      
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.name);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download error:', err);
-      alert('Download failed: ' + err.message);
-    }
-  };
+    const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(file.path);
+    
+    const response = await blockBlobClient.download();
+    const blob = await response.blobBody;
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', file.name);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Download error:', err);
+    alert('Download failed: ' + err.message);
+  }
+};
 
   const pathParts = currentPath.split('/').filter(Boolean);
 
