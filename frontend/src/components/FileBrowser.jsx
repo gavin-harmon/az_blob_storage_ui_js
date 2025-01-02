@@ -28,12 +28,18 @@ const FileBrowser = ({
   });
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null);
 
   const sortedFiles = useMemo(() => {
-    const sortedItems = [...files];
+    // First deduplicate by name, preferring directory type
+    const uniqueItems = Array.from(
+      new Map(
+        [...files].sort((a, b) => 
+          a.name === b.name ? (a.type === 'directory' ? -1 : 1) : 0
+        ).map(item => [item.name, item])
+      ).values()
+    );
     
-    return sortedItems.sort((a, b) => {
+    return uniqueItems.sort((a, b) => {
       if (a.type !== b.type) {
         return a.type === 'directory' ? -1 : 1;
       }
@@ -70,65 +76,43 @@ const FileBrowser = ({
 
   const handleUpload = async (files) => {
     try {
-      const sasToken = azureConfig.sasToken.startsWith('?') 
-        ? azureConfig.sasToken 
-        : `?${azureConfig.sasToken}`;
-
-      const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-      const blobServiceClient = new BlobServiceClient(`${baseUrl}${sasToken}`);
+      const accountUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const blobServiceClient = new BlobServiceClient(accountUrl, azureConfig.sasToken);
       const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
 
       for (const file of files) {
-        setUploadProgress({
-          fileName: file.name,
-          progress: 0,
-          totalSize: formatSize(file.size)
-        });
-
-        const blobPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
-
-        await blockBlobClient.uploadData(file, {
-          onProgress: (ev) => {
-            const progress = (ev.loadedBytes / file.size) * 100;
-            setUploadProgress(prev => ({
-              ...prev,
-              progress: progress.toFixed(1)
-            }));
-          },
-          blockSize: 4 * 1024 * 1024,
-          concurrency: 20,
-          blobHTTPHeaders: {
-            blobContentType: file.type || 'application/octet-stream'
-          }
-        });
+        console.log('Uploading file:', file.name);
+        const blobName = currentPath ? `${currentPath}/${file.name}` : file.name;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        await blockBlobClient.uploadBrowserData(file);
       }
-      
-      setUploadProgress(null);
       onNavigate(currentPath);
     } catch (err) {
       console.error('Upload error:', err);
       alert('Upload failed: ' + err.message);
-      setUploadProgress(null);
     }
   };
 
   const handleDownload = async (file) => {
     try {
-      const encodedPath = encodeURIComponent(file.path || file.name);
-      const sasToken = azureConfig.sasToken.startsWith('?') 
-        ? azureConfig.sasToken 
-        : `?${azureConfig.sasToken}`;
+      const blobServiceClient = new BlobServiceClient(
+        `https://${azureConfig.accountName}.blob.core.windows.net${azureConfig.sasToken}`
+      );
 
-      const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
-      const url = `${baseUrl}/${azureConfig.containerName}/${encodedPath}${sasToken}`;
+      const containerClient = blobServiceClient.getContainerClient(azureConfig.containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(file.path);
       
+      const response = await blockBlobClient.download();
+      const blob = await response.blobBody;
+      
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', file.name);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download error:', err);
       alert('Download failed: ' + err.message);
@@ -139,7 +123,6 @@ const FileBrowser = ({
 
   return (
     <div className="w-full bg-[#1a1f2e] text-gray-100 rounded-lg overflow-hidden">
-      {/* Breadcrumb Navigation */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center text-sm">
           <button 
@@ -162,7 +145,6 @@ const FileBrowser = ({
         </div>
       </div>
 
-      {/* Actions Bar */}
       <div className="p-3">
         <button
           onClick={() => setIsNewFolderDialogOpen(true)}
@@ -173,7 +155,6 @@ const FileBrowser = ({
         </button>
       </div>
 
-      {/* File List Header */}
       <div className="px-4 py-2 bg-[#1a1f2e] border-y border-gray-700">
         <div className="grid grid-cols-12 gap-4">
           <button 
@@ -194,7 +175,6 @@ const FileBrowser = ({
         </div>
       </div>
 
-      {/* File List */}
       <div>
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Loading...</div>
@@ -246,7 +226,6 @@ const FileBrowser = ({
         )}
       </div>
 
-      {/* Upload Area */}
       <div className="p-4 border-t border-gray-700">
         <div className="border-2 border-dashed border-gray-600 rounded-lg p-8">
           <input
