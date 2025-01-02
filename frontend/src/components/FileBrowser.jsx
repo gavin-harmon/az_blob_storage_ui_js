@@ -13,6 +13,13 @@ import {
 } from 'lucide-react';
 import NewFolderDialog from './NewFolderDialog';
 
+const formatSize = (bytes) => {
+  if (!bytes) return '-';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+};
+
 const FileBrowser = ({ 
   files = [], 
   currentPath = '',
@@ -115,12 +122,13 @@ const FileBrowser = ({
 
   const handleDownload = async (file) => {
     try {
-      const encodedPath = encodeURIComponent(file.path);
+      const encodedPath = encodeURIComponent(file.path || file.name);
       const sasToken = azureConfig.sasToken.startsWith('?') 
         ? azureConfig.sasToken 
         : `?${azureConfig.sasToken}`;
 
-      const url = `https://${azureConfig.accountName}.blob.core.windows.net/${azureConfig.containerName}/${encodedPath}${sasToken}`;
+      const baseUrl = `https://${azureConfig.accountName}.blob.core.windows.net`;
+      const url = `${baseUrl}/${azureConfig.containerName}/${encodedPath}${sasToken}`;
       
       const link = document.createElement('a');
       link.href = url;
@@ -138,7 +146,94 @@ const FileBrowser = ({
 
   return (
     <div className="w-full">
-      <div className="border-t border-gray-200 dark:border-dark-600 p-4">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 mb-4 text-sm">
+        <span 
+          className="cursor-pointer hover:text-blue-600"
+          onClick={() => onNavigate('')}
+        >
+          Root
+        </span>
+        {pathParts.map((part, index) => (
+          <React.Fragment key={part}>
+            <ChevronRight className="h-4 w-4" />
+            <span 
+              className="cursor-pointer hover:text-blue-600"
+              onClick={() => onNavigate(pathParts.slice(0, index + 1).join('/'))}
+            >
+              {part}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Actions Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() => setIsNewFolderDialogOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          <FolderPlus className="h-4 w-4" />
+          New Folder
+        </button>
+      </div>
+
+      {/* File List */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-12 gap-4 p-3 bg-gray-100 dark:bg-gray-800 border-b">
+          <div className="col-span-6 flex items-center gap-2 cursor-pointer" onClick={() => requestSort('name')}>
+            Name
+            <SortIcon column="name" />
+          </div>
+          <div className="col-span-3 flex items-center gap-2 cursor-pointer" onClick={() => requestSort('size')}>
+            Size
+            <SortIcon column="size" />
+          </div>
+          <div className="col-span-3">
+            Actions
+          </div>
+        </div>
+
+        {sortedFiles.map(file => (
+          <div key={file.name} className="grid grid-cols-12 gap-4 p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+            <div className="col-span-6 flex items-center gap-2">
+              {file.type === 'directory' ? (
+                <Folder className="h-5 w-5 text-blue-600" />
+              ) : (
+                <File className="h-5 w-5 text-gray-600" />
+              )}
+              <span 
+                className="cursor-pointer hover:text-blue-600"
+                onClick={() => file.type === 'directory' ? onNavigate(`${currentPath}/${file.name}`.replace(/^\//, '')) : null}
+              >
+                {file.name}
+              </span>
+            </div>
+            <div className="col-span-3">
+              {formatSize(file.size)}
+            </div>
+            <div className="col-span-3 flex items-center gap-2">
+              {file.type !== 'directory' && (
+                <button
+                  onClick={() => handleDownload(file)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                >
+                  Download
+                </button>
+              )}
+              <button
+                onClick={() => onDelete(file)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Upload Area */}
+      <div className="border-t border-gray-200 dark:border-dark-600 p-4 mt-4">
         <div className="border-2 border-dashed border-gray-300 dark:border-dark-500 rounded-lg p-8">
           {uploadProgress ? (
             <div className="text-center">
@@ -191,13 +286,6 @@ const FileBrowser = ({
       />
     </div>
   );
-};
-
-const formatSize = (bytes) => {
-  if (!bytes) return '-';
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 };
 
 export default FileBrowser;
