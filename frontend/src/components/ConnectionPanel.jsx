@@ -25,7 +25,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               type="text"
               name="accountName"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
+              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
               placeholder="e.g., mystorageaccount"
             />
           </div>
@@ -38,7 +38,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               type="text"
               name="containerName"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
+              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
               placeholder="e.g., mycontainer"
             />
           </div>
@@ -51,7 +51,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               type="password"
               name="sasToken"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
+              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
               placeholder="Enter your SAS token"
             />
           </div>
