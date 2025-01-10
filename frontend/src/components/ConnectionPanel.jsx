@@ -5,9 +5,9 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
     e.preventDefault();
     const formData = new FormData(e.target);
     onConnect({
-      accountName: formData.get('accountName'),
-      containerName: formData.get('containerName'),
-      sasToken: formData.get('sasToken')
+      accountName: formData.get('accountName').trim(),
+      containerName: formData.get('containerName').trim(),
+      sasToken: formData.get('sasToken').trim()
     });
   };
 
