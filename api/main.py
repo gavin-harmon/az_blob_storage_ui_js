@@ -27,8 +27,9 @@ class ConnectionInfo(BaseModel):
     account_name: str
     container_name: str
     sas_token: str
+    directory_path: str = ""  # Optional with default empty string
 
-# Your existing API endpoints
+# Update the connect endpoint
 @app.post("/api/connect")
 async def connect(info: ConnectionInfo):
     global blob_service
@@ -36,7 +37,8 @@ async def connect(info: ConnectionInfo):
         blob_service = BlobService(
             account_name=info.account_name,
             sas_token=info.sas_token,
-            container_name=info.container_name
+            container_name=info.container_name,
+            directory_path=info.directory_path  # Pass the directory path
         )
         await blob_service.list_files("")
         return {"status": "connected"}
