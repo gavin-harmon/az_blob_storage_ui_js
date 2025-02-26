@@ -7,6 +7,7 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
     onConnect({
       accountName: formData.get('accountName').trim(),
       containerName: formData.get('containerName').trim(),
+      filePath: formData.get('filePath').trim(),
       sasToken: formData.get('sasToken').trim()
     });
   };
@@ -41,6 +42,22 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
               placeholder="e.g., mycontainer"
             />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-white-700 block mb-1">
+              File Path
+            </label>
+            <input
+              type="text"
+              name="filePath"
+              required
+              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
+              placeholder="e.g., folder/myfile.csv"
+            />
+            <p className="text-xs text-white-500 mt-1">
+              Enter the path to the file within the container
+            </p>
           </div>
           
           <div>
