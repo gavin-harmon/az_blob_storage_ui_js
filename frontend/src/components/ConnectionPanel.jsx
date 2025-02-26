@@ -11,9 +11,19 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading, dark
     
     // Get values and trim whitespace
     let accountName = formData.get('accountName').trim();
-    let containerName = formData.get('containerName').trim();
+    let containerPath = formData.get('containerPath').trim();
     let sasToken = formData.get('sasToken').trim();
-    let directoryPath = showDirectoryField ? formData.get('directoryPath')?.trim() || '' : '';
+    
+    // Parse container and directory
+    let containerName, directoryPath = '';
+    if (containerPath.includes('/')) {
+      // Split on the first slash
+      const firstSlashIndex = containerPath.indexOf('/');
+      containerName = containerPath.substring(0, firstSlashIndex);
+      directoryPath = containerPath.substring(firstSlashIndex + 1);
+    } else {
+      containerName = containerPath;
+    }
     
     // Validate SAS token format
     if (!sasToken.startsWith('?') && !sasToken.startsWith('sv=')) {
@@ -29,28 +39,13 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading, dark
     // Clean up directory path (remove leading/trailing slashes)
     directoryPath = directoryPath.trim().replace(/^\/+|\/+$/g, '');
     
-    // Ensure we're not duplicating the container name in the directory path
-    if (directoryPath.startsWith(`${containerName}/`)) {
-      directoryPath = directoryPath.substring(containerName.length + 1);
-      setError(`Warning: Container name '${containerName}' was removed from the directory path`);
-    }
-    
-    // Clear any previous errors (after checking for duplicated container name)
-    if (!error || !error.startsWith('Warning:')) {
-      setError(null);
-    }
-    
     // Build connection data
     const connectionData = {
       accountName,
       containerName,
-      sasToken
+      sasToken,
+      directoryPath
     };
-    
-    // Only add directory path if it's not empty
-    if (directoryPath) {
-      connectionData.directoryPath = directoryPath;
-    }
     
     // Pass connection data to parent component
     onConnect(connectionData);
