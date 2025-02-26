@@ -36,7 +36,8 @@ function App() {
       await axios.post(`${API_BASE}/connect`, {
         account_name: credentials.accountName,
         container_name: credentials.containerName,
-        sas_token: credentials.sasToken
+        sas_token: credentials.sasToken,
+        directory_path: credentials.directoryPath || ''  // Add the directory path
       });
       
       // Store Azure config for direct access
