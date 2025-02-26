@@ -79,38 +79,25 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading, dark
             />
           </div>
           
+          // Replace the separate container and directory fields with a single field
           <div>
             <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Container Name
+              Container Path
             </label>
             <input
               type="text"
-              name="containerName"
+              name="containerPath"
               required
               className={`w-full rounded-md border focus:ring-2 ${
                 darkMode 
                   ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500' 
                   : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
               }`}
-              placeholder="e.g., mycontainer"
+              placeholder="e.g., mycontainer or mycontainer/folder/subfolder"
             />
-          </div>
-          
-          <div className="flex items-center my-2">
-            <input
-              id="showDirectoryField"
-              type="checkbox"
-              checked={showDirectoryField}
-              onChange={() => setShowDirectoryField(!showDirectoryField)}
-              className={`h-4 w-4 rounded focus:ring-offset-0 ${
-                darkMode 
-                  ? 'focus:ring-green-500 text-green-500 bg-gray-700 border-gray-600' 
-                  : 'focus:ring-blue-500 text-blue-500 bg-white border-gray-300'
-              }`}
-            />
-            <label htmlFor="showDirectoryField" className={`ml-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Connect to a specific directory
-            </label>
+            <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Enter container name or container/path
+            </p>
           </div>
           
           {showDirectoryField && (
