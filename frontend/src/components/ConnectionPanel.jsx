@@ -1,23 +1,38 @@
 import React, { useState } from 'react';
 
 const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) => {
-  const [showFilePath, setShowFilePath] = useState(false);
+  // State for handling connection errors
+  const [error, setError] = useState(null);
   
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const connectionData = {
-      accountName: formData.get('accountName').trim(),
-      containerName: formData.get('containerName').trim(),
-      sasToken: formData.get('sasToken').trim()
-    };
     
-    // Only include filePath if it's enabled and has a value
-    if (showFilePath && formData.get('filePath')) {
-      connectionData.filePath = formData.get('filePath').trim();
+    // Get values and trim whitespace
+    let accountName = formData.get('accountName').trim();
+    let containerName = formData.get('containerName').trim();
+    let sasToken = formData.get('sasToken').trim();
+    
+    // Validate SAS token format
+    if (!sasToken.startsWith('?') && !sasToken.startsWith('sv=')) {
+      setError('SAS token should start with "?" or "sv="');
+      return;
     }
     
-    onConnect(connectionData);
+    // Ensure SAS token has a leading '?' if it starts with 'sv='
+    if (sasToken.startsWith('sv=')) {
+      sasToken = `?${sasToken}`;
+    }
+    
+    // Clear any previous errors
+    setError(null);
+    
+    // Pass connection data to parent component
+    onConnect({
+      accountName,
+      containerName,
+      sasToken
+    });
   };
 
   return (
@@ -52,36 +67,6 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
             />
           </div>
           
-          <div className="flex items-center mb-2">
-            <input
-              id="showFilePath"
-              type="checkbox"
-              checked={showFilePath}
-              onChange={() => setShowFilePath(!showFilePath)}
-              className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
-            />
-            <label htmlFor="showFilePath" className="ml-2 text-sm text-white-700">
-              Connect to specific file (optional)
-            </label>
-          </div>
-          
-          {showFilePath && (
-            <div>
-              <label className="text-sm font-medium text-white-700 block mb-1">
-                File Path
-              </label>
-              <input
-                type="text"
-                name="filePath"
-                className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
-                placeholder="e.g., folder/myfile.csv"
-              />
-              <p className="text-xs text-white-500 mt-1">
-                Enter the path to the file within the container
-              </p>
-            </div>
-          )}
-          
           <div>
             <label className="text-sm font-medium text-white-700 block mb-1">
               SAS Token
@@ -91,12 +76,18 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               name="sasToken"
               required
               className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
-              placeholder="sv=2022-11-02&ss=b&srt=sco&sp=rwdlaciytfx&se=2023-..."
+              placeholder="?sv=2022-11-02&ss=b&srt=c&sp=rwdlacitfx&se=..."
             />
             <p className="text-xs text-white-500 mt-1">
-              Make sure to include the full token starting with "?" or "sv="
+              Include the full token starting with "?" or "sv="
             </p>
           </div>
+          
+          {error && (
+            <div className="p-3 bg-red-900/50 border border-red-800 rounded-md text-red-200 text-sm">
+              {error}
+            </div>
+          )}
           
           <button
             type="submit"
