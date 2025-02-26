@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) => {
+const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading, darkMode }) => {
   // State for handling connection errors
   const [error, setError] = useState(null);
   const [showDirectoryField, setShowDirectoryField] = useState(false);
@@ -32,10 +32,13 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
     // Ensure we're not duplicating the container name in the directory path
     if (directoryPath.startsWith(`${containerName}/`)) {
       directoryPath = directoryPath.substring(containerName.length + 1);
+      setError(`Warning: Container name '${containerName}' was removed from the directory path`);
     }
     
-    // Clear any previous errors
-    setError(null);
+    // Clear any previous errors (after checking for duplicated container name)
+    if (!error || !error.startsWith('Warning:')) {
+      setError(null);
+    }
     
     // Build connection data
     const connectionData = {
@@ -54,33 +57,41 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
   };
 
   return (
-    <div className="bg-grey rounded-lg shadow-sm p-6 border border-gray-200">
-      <h2 className="text-lg font-semibold text-white-800 mb-4">Azure Storage Connection</h2>
+    <div className={`rounded-lg shadow-sm p-6 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Azure Storage Connection</h2>
       
       {!isConnected ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-white-700 block mb-1">
+            <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Storage Account Name
             </label>
             <input
               type="text"
               name="accountName"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
+              className={`w-full rounded-md border focus:ring-2 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+              }`}
               placeholder="e.g., mystorageaccount"
             />
           </div>
           
           <div>
-            <label className="text-sm font-medium text-white-700 block mb-1">
+            <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Container Name
             </label>
             <input
               type="text"
               name="containerName"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
+              className={`w-full rounded-md border focus:ring-2 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+              }`}
               placeholder="e.g., mycontainer"
             />
           </div>
@@ -91,48 +102,68 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
               type="checkbox"
               checked={showDirectoryField}
               onChange={() => setShowDirectoryField(!showDirectoryField)}
-              className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
+              className={`h-4 w-4 rounded focus:ring-offset-0 ${
+                darkMode 
+                  ? 'focus:ring-green-500 text-green-500 bg-gray-700 border-gray-600' 
+                  : 'focus:ring-blue-500 text-blue-500 bg-white border-gray-300'
+              }`}
             />
-            <label htmlFor="showDirectoryField" className="ml-2 text-sm text-white-700">
+            <label htmlFor="showDirectoryField" className={`ml-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Connect to a specific directory
             </label>
           </div>
           
           {showDirectoryField && (
             <div>
-              <label className="text-sm font-medium text-white-700 block mb-1">
+              <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Directory Path
               </label>
               <input
                 type="text"
                 name="directoryPath"
-                className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
+                className={`w-full rounded-md border focus:ring-2 ${
+                  darkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500' 
+                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+                }`}
                 placeholder="e.g., folder/subfolder"
               />
-              <p className="text-xs text-white-500 mt-1">
+              <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 Enter the path within the container (do not include the container name in the path)
               </p>
             </div>
           )}
           
           <div>
-            <label className="text-sm font-medium text-white-700 block mb-1">
+            <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               SAS Token
             </label>
             <input
               type="password"
               name="sasToken"
               required
-              className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 text-black"
+              className={`w-full rounded-md border focus:ring-2 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+              }`}
               placeholder="?sv=2022-11-02&ss=b&srt=c&sp=rwdlacitfx&se=..."
             />
-            <p className="text-xs text-white-500 mt-1">
+            <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               Include the full token starting with "?" or "sv="
             </p>
           </div>
           
           {error && (
-            <div className="p-3 bg-red-900/50 border border-red-800 rounded-md text-red-200 text-sm">
+            <div className={`p-3 border rounded-md text-sm ${
+              error.startsWith('Warning:') 
+                ? darkMode 
+                  ? 'bg-yellow-900/30 border-yellow-800/30 text-yellow-200' 
+                  : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                : darkMode 
+                  ? 'bg-red-900/30 border-red-800/30 text-red-200' 
+                  : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
               {error}
             </div>
           )}
@@ -140,21 +171,33 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading }) =>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-4 bg-green-600 text-black rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 transition-colors"
+            className={`w-full py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              darkMode 
+                ? 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500 disabled:bg-green-800/50' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 disabled:bg-blue-300'
+            }`}
           >
             {isLoading ? 'Connecting...' : 'Connect'}
           </button>
         </form>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-md">
+          <div className={`flex items-center space-x-2 p-3 rounded-md ${
+            darkMode 
+              ? 'bg-green-900/30 text-green-200' 
+              : 'bg-green-50 text-green-700'
+          }`}>
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-green-700 font-medium">Connected</span>
+            <span className="font-medium">Connected</span>
           </div>
           
           <button
             onClick={onDisconnect}
-            className="w-full py-2 px-4 bg-grey-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-grey-500 focus:ring-offset-2 transition-colors"
+            className={`w-full py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              darkMode 
+                ? 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500' 
+                : 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500'
+            }`}
           >
             Disconnect
           </button>
