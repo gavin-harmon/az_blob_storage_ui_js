@@ -73,8 +73,6 @@ const ConnectionPanel = ({ onConnect, isConnected, onDisconnect, isLoading, dark
               placeholder="e.g., mystorageaccount"
             />
           </div>
-          
-          // Replace the separate container and directory fields with a single field
           <div>
             <label className={`text-sm font-medium block mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Container Path
